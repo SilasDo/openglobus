@@ -425,6 +425,7 @@ class BaseShape {
                 sh = r.handler.programs.shape_nl;
                 p = sh._program;
                 shu = p.uniforms;
+                sha = p.attributes;
 
                 sh.activate();
 
