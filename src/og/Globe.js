@@ -52,6 +52,7 @@ const PLANET_NAME_PREFIX = "globus_planet_";
  * @param {object} options - Options:
  * @param {string} options.target - HTML element id where planet canvas have to be created.
  * @param {og.scene.RenderNode} [options.skybox] - Render skybox. null - default.
+ * @param {og.scene.RenderNode} [options.moon] - Render moon. null - default.
  * @param {string} [options.name] - Planet name. Default is unic identifier.
  * @param {og.terrain.Terrain} [options.terrain] - Terrain provider. Default no terrain - og.terrain.EmptyTerrain.
  * @param {Array.<og.control.Control>} [options.controls] - Renderer controls array.
@@ -182,6 +183,13 @@ class Globe {
             this.sun = new Sun();
             this.planet.addControl(this.sun);
         }
+
+        // Moon
+        if (options.moon) {
+            this.renderer.addNode(options.moon);
+            this.sun.sunlight.addTo(options.moon);
+        }
+
 
         if (options.sun) {
             if (options.sun.active !== undefined && !options.sun.active) {
