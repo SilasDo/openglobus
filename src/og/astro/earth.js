@@ -11,6 +11,97 @@ import { Quat } from '../math/Quat.js';
 import { Vec3 } from '../math/Vec3.js';
 
 /**
+ * Returns Moon position in the geocentric coordinate system by the time.
+ * @param {Number} jDate - Julian date time.
+ * @returns {og.Vec3} - Moon geocentric coordinates.
+ */
+export function getMoonPosition(jDate) {
+    // http://stjarnhimlen.se/comp/tutorial.html
+    var d = jDate - jd.J2000;
+    //d = -3543 //test
+    var N = math.rev(125.1228 - 0.0529538083  * d);    //(Long asc. node)
+    var i =   5.1454;                                  //(Inclination)
+    var w = math.rev(318.0634 + 0.1643573223  * d);    //(Arg. of perigee)
+    var a =  60.2666;                                  //(Mean distance)
+    var e = 0.054900;                                  //(Eccentricity)
+    var M = math.rev(115.3654 + 13.0649929509 * d);    //(Mean anomaly)
+
+    //eccentric anomaly.
+    var E1 = M + (180/Math.PI) * e * Math.sin(M*math.RADIANS) * (1 + e * Math.cos(M*math.RADIANS));
+    do{
+    var E0 =E1;
+    E1 = E0 - (E0 - (180/Math.PI) * e * Math.sin(E0*math.RADIANS) - M) / (1 - e * Math.cos(E0*math.RADIANS));
+    }while(Math.abs(E0-E1)>0.005);
+
+    var E = E1;
+
+    var x = a * (Math.cos(E*math.RADIANS) - e);
+    var y = a * Math.sqrt(1- e*e) *Math.sin(E*math.RADIANS);
+
+    //convert this to distance and true anonaly
+    var r = Math.sqrt(x*x+ y*y);
+    var v = Math.atan2(y,x)*math.DEGREES;
+
+    //the Moon's position in ecliptic coordinates
+    var xeclip = r * ( Math.cos(N*math.RADIANS) * Math.cos((v+w)*math.RADIANS) - Math.sin(N*math.RADIANS) * Math.sin((v+w)*math.RADIANS) * Math.cos(i*math.RADIANS) );
+    var yeclip = r * ( Math.sin(N*math.RADIANS) * Math.cos((v+w)*math.RADIANS) + Math.cos(N*math.RADIANS) * Math.sin((v+w)*math.RADIANS) * Math.cos(i*math.RADIANS) );
+    var zeclip = r * Math.sin((v+w)*math.RADIANS) * Math.sin(i*math.RADIANS);
+
+    var long =  Math.atan2( yeclip, xeclip ) *math.DEGREES;
+    var lat  =  Math.atan2( zeclip, Math.sqrt( xeclip*xeclip + yeclip*yeclip ) )*math.DEGREES;
+    var re    =  Math.sqrt( xeclip*xeclip + yeclip*yeclip + zeclip*zeclip );
+
+
+    var ws = 282.9404 + 4.70935E-5 * d; //Sun's longitude of perihelion
+    var Ms = math.rev(356.0470 + 0.9856002585 * d); //Sun mean anomaly
+    var Ls =  math.rev(ws + Ms);//Sun's mean longitude
+    var Lm = math.rev(N+w+M); //Moon's mean longitude
+    var Mm = M; // Moon's mean anomaly
+    var D = math.rev(Lm -Ls); //Moon's mean elongation
+    var F = math.rev(Lm - N); //Moon's argument of latitude
+
+    //Perturbations in longitude (degrees):
+    long += -1.274 * Math.sin((Mm - 2*D)*math.RADIANS)  //(Evection)
+        + 0.658 * Math.sin(2*D*math.RADIANS)  //(Variation)
+        -0.186 * Math.sin((Ms)*math.RADIANS)          //(Yearly equation)
+        -0.059 * Math.sin((2*Mm - 2*D)*math.RADIANS)
+        -0.057 * Math.sin((Mm - 2*D + Ms)*math.RADIANS)
+        +0.053 * Math.sin((Mm + 2*D)*math.RADIANS)
+        +0.046 * Math.sin((2*D - Ms)*math.RADIANS)
+        +0.041 * Math.sin((Mm - Ms)*math.RADIANS)
+        -0.035 * Math.sin((D)*math.RADIANS)            //(Parallactic equation)
+        -0.031 * Math.sin((Mm + Ms)*math.RADIANS)
+        -0.015 * Math.sin((2*F - 2*D)*math.RADIANS)
+        +0.011 * Math.sin((Mm - 4*D)*math.RADIANS);
+    // Perturbations in latitude (degrees):
+    lat  += -0.173 * Math.sin((F - 2*D)*math.RADIANS)
+            -0.055 * Math.sin((Mm - F - 2*D)*math.RADIANS)
+            -0.046 * Math.sin((Mm + F - 2*D)*math.RADIANS)
+            +0.033 * Math.sin((F + 2*D)*math.RADIANS)
+            +0.017 * Math.sin((2*Mm + F)*math.RADIANS);
+    // Perturbations in lunar distance (Earth radii):
+    re += -0.58 * Math.cos((Mm - 2*D)*math.RADIANS)
+          -0.46 * Math.cos(2*D*math.RADIANS);
+        
+    re *= 6371000; //* Earth radii
+
+    var oblecl= 23.4393 - 3.563E-7 * d;
+
+    xeclip = re * Math.cos(long*math.RADIANS) * Math.cos(lat*math.RADIANS)
+    yeclip = re * Math.sin(long*math.RADIANS) * Math.cos(lat*math.RADIANS)
+    zeclip = re * Math.sin(lat*math.RADIANS)
+
+    //x-rotation
+    var xequat = xeclip
+    var yequat = yeclip * Math.cos(oblecl*math.RADIANS) - zeclip * Math.sin(oblecl*math.RADIANS)
+    var zequat = yeclip * Math.sin(oblecl*math.RADIANS) + zeclip * Math.cos(oblecl*math.RADIANS)
+
+    //var RA = Math.atan2(yequat, xequat) * math.DEGREES;
+    //var Decl = Math.atan2(zequat, Math.sqrt(xequat * xequat + yequat * yequat)) * math.DEGREES;
+    return (new Vec3(-yequat,zequat,-xequat));
+}
+
+/**
  * Returns Sun position in the geocentric coordinate system by the time.
  * @param {Number} jDate - Julian date time.
  * @returns {og.Vec3} - Sun geocentric coordinates.
