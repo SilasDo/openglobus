@@ -151,7 +151,7 @@ export const MODIFIED_JULIAN_DATE_DIFFERENCE = 2400000.5;
  * @const
  * @default
  */
-export const J2000 = 2451543.5;
+export const J2000 = 2451545.0;
 
 /**
  * Returns julian days from Epoch.
